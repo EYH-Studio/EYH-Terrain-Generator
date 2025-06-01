@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Unity Terrain Creator Pro</title>
+    <link rel="stylesheet" href="css/main.css" />
+    <link rel="stylesheet" href="css/themes/dark.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>🎮 Unity Terrain Creator Pro</h1>
+        <p>Professional Height Map Generator with Multiple Export Formats</p>
+        <button id="toggle-theme" class="theme-btn">🌙</button>
+      </div>
+
+      <div class="main-content">
+        <!-- Control Panel -->
+        <div class="control-panel">
+          <div class="panel-section">
+            <h3>🎲 Basic Settings</h3>
+            <div class="control-group">
+              <label>Size:</label>
+              <div class="control-input">
+                <select id="terrainSize">
+                  <option value="129">129x129</option>
+                  <option value="257">257x257</option>
+                  <option value="513" selected>513x513</option>
+                  <option value="1025">1025x1025</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="control-group">
+              <label>Max Height:</label>
+              <div class="control-input">
+                <input
+                  type="range"
+                  id="maxHeight"
+                  min="100"
+                  max="2000"
+                  value="600"
+                  step="50"
+                />
+                <span id="maxHeightValue">600m</span>
+              </div>
+            </div>
+
+            <div class="control-group">
+              <label>Scale:</label>
+              <div class="control-input">
+                <input
+                  type="range"
+                  id="terrainScale"
+                  min="0.001"
+                  max="0.050"
+                  value="0.008"
+                  step="0.001"
+                />
+                <span id="terrainScaleValue">0.008</span>
+              </div>
+            </div>
+
+            <div class="control-group">
+              <label>Seed:</label>
+              <div class="control-input">
+                <input
+                  type="number"
+                  id="seed"
+                  value="12345"
+                  min="1"
+                  max="999999"
+                />
+                <button onclick="randomSeed()" class="random-btn">🎲</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel-section">
+            <h3>🏔️ Terrain Features</h3>
+            <div class="control-group">
+              <label>Type:</label>
+              <div class="control-input">
+                <select id="terrainType">
+                  <option value="plains">Plains</option>
+                  <option value="hills">Hills</option>
+                  <option value="mountains">Mountains</option>
+                  <option value="desert">Desert</option>
+                  <option value="islands">Islands</option>
+                  <option value="valleys">Valleys</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="control-group">
+              <label>Octaves:</label>
+              <div class="control-input">
+                <input
+                  type="range"
+                  id="octaves"
+                  min="1"
+                  max="8"
+                  value="6"
+                  step="1"
+                />
+                <span id="octavesValue">6</span>
+              </div>
+            </div>
+
+            <div class="control-group">
+              <label>Persistence:</label>
+              <div class="control-input">
+                <input
+                  type="range"
+                  id="persistence"
+                  min="0.1"
+                  max="1.0"
+                  value="0.6"
+                  step="0.1"
+                />
+                <span id="persistenceValue">0.6</span>
+              </div>
+            </div>
+
+            <div class="control-group">
+              <label>Lacunarity:</label>
+              <div class="control-input">
+                <input
+                  type="range"
+                  id="lacunarity"
+                  min="1.5"
+                  max="3.0"
+                  value="2.0"
+                  step="0.1"
+                />
+                <span id="lacunarityValue">2.0</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel-section">
+            <h3>🌊 Water Features</h3>
+            <div class="control-group">
+              <label>Water Type:</label>
+              <div class="control-input">
+                <select id="waterType">
+                  <option value="none">No Water</option>
+                  <option value="lake">Lake</option>
+                  <option value="river">River</option>
+                  <option value="ocean">Ocean</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="control-group">
+              <label>Water Level:</label>
+              <div class="control-input">
+                <input
+                  type="range"
+                  id="waterLevel"
+                  min="0"
+                  max="200"
+                  value="50"
+                  step="10"
+                />
+                <span id="waterLevelValue">50m</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel-section">
+            <h3>🎨 Smoothing & Effects</h3>
+            <div class="control-group">
+              <label>Smoothing:</label>
+              <div class="control-input">
+                <input
+                  type="range"
+                  id="smoothing"
+                  min="0"
+                  max="5"
+                  value="1"
+                  step="1"
+                />
+                <span id="smoothingValue">1</span>
+              </div>
+            </div>
+
+            <div class="control-group">
+              <label>Contrast:</label>
+              <div class="control-input">
+                <input
+                  type="range"
+                  id="contrast"
+                  min="0.5"
+                  max="3.0"
+                  value="1.0"
+                  step="0.1"
+                />
+                <span id="contrastValue">1.0</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="action-buttons">
+            <button id="generateTerrain" class="btn-primary">
+              🚀 Generate Terrain
+            </button>
+            <button id="downloadRAW" class="btn-secondary">
+              📦 Download RAW
+            </button>
+            <button id="downloadPNG" class="btn-secondary">
+              🖼️ Download PNG
+            </button>
+          </div>
+        </div>
+
+        <!-- Preview Panel -->
+        <div class="preview-panel">
+          <div class="preview-header">
+            <h3>👁️ Terrain Preview</h3>
+            <div class="preview-controls">
+              <label>
+                <input type="checkbox" id="showWireframe" /> Wireframe
+              </label>
+              <label>
+                <input type="checkbox" id="showContours" /> Contours
+              </label>
+            </div>
+          </div>
+
+          <div class="canvas-container">
+            <canvas id="terrain-preview" width="512" height="512"></canvas>
+            <div class="canvas-overlay">
+              <div id="loading" class="loading hidden">Generating...</div>
+              <div id="terrain-info" class="info-panel">
+                <p>Configure settings and click "Generate Terrain"</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="preview-stats">
+            <div class="stat-item">
+              <span class="stat-label">Size:</span>
+              <span id="stat-size">-</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Min Height:</span>
+              <span id="stat-min">-</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Max Height:</span>
+              <span id="stat-max">-</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Avg Height:</span>
+              <span id="stat-avg">-</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="js/utils/perlin-noise.js"></script>
+    <script src="js/core/terrain-generator.js"></script>
+    <script src="js/core/water-system.js"></script>
+    <script src="js/core/terrain-renderer.js"></script>
+    <script src="js/core/export-manager.js"></script>
+    <script src="js/app.js"></script>
+  </body>
+</html>
