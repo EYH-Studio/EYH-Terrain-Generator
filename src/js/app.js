@@ -37,8 +37,8 @@ class TerrainApp {
       // Initialize slider values
       this.updateAllSliderValues();
 
-      // Generate initial terrain after a short delay
-      setTimeout(() => this.generateTerrain(), 100);
+      // Generate initial terrain
+      setTimeout(() => this.generateTerrain(), 500);
 
       console.log("TerrainApp setup complete");
     } catch (error) {
@@ -58,8 +58,6 @@ class TerrainApp {
         this.generateTerrain();
       });
       console.log("Generate button listener added");
-    } else {
-      console.error("Generate button not found!");
     }
 
     // Export buttons
@@ -69,23 +67,15 @@ class TerrainApp {
     if (downloadRAW) {
       downloadRAW.addEventListener("click", (e) => {
         e.preventDefault();
-        console.log("RAW download button clicked");
         this.exportRAW();
       });
-      console.log("RAW download listener added");
-    } else {
-      console.error("RAW download button not found!");
     }
 
     if (downloadPNG) {
       downloadPNG.addEventListener("click", (e) => {
         e.preventDefault();
-        console.log("PNG download button clicked");
         this.exportPNG();
       });
-      console.log("PNG download listener added");
-    } else {
-      console.error("PNG download button not found!");
     }
 
     // Theme toggle
@@ -101,47 +91,40 @@ class TerrainApp {
     const wireframeCheck = document.getElementById("showWireframe");
     const contoursCheck = document.getElementById("showContours");
 
-    if (wireframeCheck && this.renderer) {
+    if (wireframeCheck) {
       wireframeCheck.addEventListener("change", (e) => {
-        this.renderer.setWireframe(e.target.checked);
-        this.renderPreview();
+        if (this.renderer) {
+          this.renderer.setWireframe(e.target.checked);
+          this.renderPreview();
+        }
       });
     }
 
-    if (contoursCheck && this.renderer) {
+    if (contoursCheck) {
       contoursCheck.addEventListener("change", (e) => {
-        this.renderer.setContours(e.target.checked);
-        this.renderPreview();
+        if (this.renderer) {
+          this.renderer.setContours(e.target.checked);
+          this.renderPreview();
+        }
       });
     }
 
-    // All range inputs
+    // Range inputs with real-time update
     const sliders = document.querySelectorAll('input[type="range"]');
-    console.log(`Found ${sliders.length} sliders`);
-
     sliders.forEach((slider) => {
       slider.addEventListener("input", () => {
         this.updateSliderValue(slider.id);
       });
 
       slider.addEventListener("change", () => {
-        if (
-          ["terrainScale", "octaves", "persistence", "lacunarity"].includes(
-            slider.id
-          )
-        ) {
-          this.debounceGenerate();
-        }
+        this.debounceGenerate();
       });
     });
 
     // Select inputs
     const selects = document.querySelectorAll("select");
-    console.log(`Found ${selects.length} selects`);
-
     selects.forEach((select) => {
       select.addEventListener("change", () => {
-        console.log(`Select changed: ${select.id} = ${select.value}`);
         this.generateTerrain();
       });
     });
@@ -150,12 +133,9 @@ class TerrainApp {
     const seedInput = document.getElementById("seed");
     if (seedInput) {
       seedInput.addEventListener("change", () => {
-        console.log(`Seed changed: ${seedInput.value}`);
         this.generateTerrain();
       });
     }
-
-    console.log("All event listeners setup complete");
   }
 
   updateAllSliderValues() {
@@ -196,24 +176,23 @@ class TerrainApp {
   getSettings() {
     const settings = {
       size: document.getElementById("terrainSize")?.value || "513",
-      maxHeight: parseFloat(document.getElementById("maxHeight")?.value) || 600,
+      maxHeight: parseFloat(document.getElementById("maxHeight")?.value) || 150,
       scale:
-        parseFloat(document.getElementById("terrainScale")?.value) || 0.008,
-      octaves: parseInt(document.getElementById("octaves")?.value) || 6,
+        parseFloat(document.getElementById("terrainScale")?.value) || 0.005,
+      octaves: parseInt(document.getElementById("octaves")?.value) || 4,
       persistence:
-        parseFloat(document.getElementById("persistence")?.value) || 0.6,
+        parseFloat(document.getElementById("persistence")?.value) || 0.4,
       lacunarity:
-        parseFloat(document.getElementById("lacunarity")?.value) || 2.0,
-      terrainType: document.getElementById("terrainType")?.value || "plains",
+        parseFloat(document.getElementById("lacunarity")?.value) || 1.8,
+      terrainType: document.getElementById("terrainType")?.value || "hills",
       waterType: document.getElementById("waterType")?.value || "none",
       waterLevel:
-        parseFloat(document.getElementById("waterLevel")?.value) || 50,
-      smoothing: parseInt(document.getElementById("smoothing")?.value) || 1,
-      contrast: parseFloat(document.getElementById("contrast")?.value) || 1.0,
+        parseFloat(document.getElementById("waterLevel")?.value) || 30,
+      smoothing: parseInt(document.getElementById("smoothing")?.value) || 2,
+      contrast: parseFloat(document.getElementById("contrast")?.value) || 1.1,
       seed: parseInt(document.getElementById("seed")?.value) || 12345,
     };
 
-    console.log("Current settings:", settings);
     return settings;
   }
 
@@ -224,30 +203,23 @@ class TerrainApp {
 
       const settings = this.getSettings();
 
-      // Small delay to allow UI to update
+      // Small delay for UI
       await new Promise((resolve) => setTimeout(resolve, 50));
 
       // Generate terrain
-      console.log("Generating heightmap...");
       let heightmap = this.terrainGenerator.generate(settings);
 
       if (!heightmap) {
         throw new Error("Failed to generate heightmap");
       }
 
-      console.log(
-        `Generated heightmap: ${heightmap.length}x${heightmap[0].length}`
-      );
-
       // Apply water features
-      console.log("Applying water features...");
       heightmap = this.waterSystem.applyWater(heightmap, settings);
 
       this.currentHeightmap = heightmap;
       this.exportManager.setHeightmap(heightmap);
 
       // Render preview
-      console.log("Rendering preview...");
       this.renderPreview();
 
       // Update stats
@@ -279,43 +251,37 @@ class TerrainApp {
 
   updateStats() {
     const stats = this.terrainGenerator.getHeightmapStats();
-    if (!stats) {
-      console.warn("No stats available");
-      return;
-    }
+    if (!stats) return;
 
-    const statSize = document.getElementById("stat-size");
-    const statMin = document.getElementById("stat-min");
-    const statMax = document.getElementById("stat-max");
-    const statAvg = document.getElementById("stat-avg");
+    const elements = {
+      size: document.getElementById("stat-size"),
+      min: document.getElementById("stat-min"),
+      max: document.getElementById("stat-max"),
+      avg: document.getElementById("stat-avg"),
+    };
 
-    if (statSize) statSize.textContent = `${stats.size}x${stats.size}`;
-    if (statMin) statMin.textContent = stats.min + "m";
-    if (statMax) statMax.textContent = stats.max + "m";
-    if (statAvg) statAvg.textContent = stats.avg + "m";
+    if (elements.size)
+      elements.size.textContent = `${stats.size}x${stats.size}`;
+    if (elements.min) elements.min.textContent = stats.min + "m";
+    if (elements.max) elements.max.textContent = stats.max + "m";
+    if (elements.avg) elements.avg.textContent = stats.avg + "m";
 
     const infoPanel = document.getElementById("terrain-info");
     if (infoPanel) {
       infoPanel.innerHTML = `
                 <p><strong>✅ Terrain Generated Successfully!</strong></p>
-                <p>Ready for export to Unity or other applications</p>
+                <p>Ready for export to Unity</p>
             `;
     }
-
-    console.log("Stats updated:", stats);
   }
 
   exportRAW() {
     try {
-      console.log("Starting RAW export...");
-
       if (!this.currentHeightmap) {
         alert("Please generate terrain first!");
         return;
       }
-
       this.exportManager.exportRAW();
-      console.log("RAW export completed");
     } catch (error) {
       console.error("Export error:", error);
       alert("Export failed: " + error.message);
@@ -324,15 +290,11 @@ class TerrainApp {
 
   exportPNG() {
     try {
-      console.log("Starting PNG export...");
-
       if (!this.currentHeightmap) {
         alert("Please generate terrain first!");
         return;
       }
-
       this.exportManager.exportPNG();
-      console.log("PNG export completed");
     } catch (error) {
       console.error("Export error:", error);
       alert("Export failed: " + error.message);
@@ -368,26 +330,16 @@ class TerrainApp {
 
 // Global functions
 window.randomSeed = function () {
-  console.log("Random seed function called");
   const seedInput = document.getElementById("seed");
   if (seedInput) {
     const newSeed = Math.floor(Math.random() * 1000000);
     seedInput.value = newSeed;
     seedInput.dispatchEvent(new Event("change"));
-    console.log("New seed generated:", newSeed);
-  } else {
-    console.error("Seed input not found!");
   }
 };
 
-// Initialize app when page loads
+// Initialize app
 document.addEventListener("DOMContentLoaded", () => {
   console.log("DOM loaded, initializing TerrainApp...");
   window.terrainApp = new TerrainApp();
 });
-
-// Fallback initialization
-if (document.readyState === "complete") {
-  console.log("Document already loaded, initializing TerrainApp...");
-  window.terrainApp = new TerrainApp();
-}

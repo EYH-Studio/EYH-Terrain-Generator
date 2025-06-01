@@ -7,10 +7,10 @@ class TerrainGenerator {
 
   generate(settings) {
     try {
-      this.settings = settings;
-      this.noise = new PerlinNoise(settings.seed);
+      this.settings = this.optimizeSettingsForUnity(settings);
+      this.noise = new PerlinNoise(this.settings.seed);
 
-      const size = parseInt(settings.size);
+      const size = parseInt(this.settings.size);
       this.heightmap = this.createHeightmap(size);
 
       return this.heightmap;
@@ -18,6 +18,25 @@ class TerrainGenerator {
       console.error("TerrainGenerator error:", error);
       throw error;
     }
+  }
+
+  optimizeSettingsForUnity(settings) {
+    // Unity-friendly parameter optimization
+    return {
+      ...settings,
+      // Daha yumuşak terrain için scale'i azalt
+      scale: Math.max(0.002, Math.min(0.02, settings.scale)),
+      // Octave'leri sınırla (çok detay Unity'de problem yaratır)
+      octaves: Math.max(3, Math.min(6, settings.octaves)),
+      // Persistence'ı düşük tut (yumuşak geçişler için)
+      persistence: Math.max(0.3, Math.min(0.7, settings.persistence)),
+      // Lacunarity'yi sınırla
+      lacunarity: Math.max(1.5, Math.min(2.5, settings.lacunarity)),
+      // Height'ı Unity için optimize et
+      maxHeight: Math.max(50, Math.min(500, settings.maxHeight)),
+      // Contrast'ı hafif tut
+      contrast: Math.max(0.8, Math.min(1.5, settings.contrast)),
+    };
   }
 
   createHeightmap(size) {
@@ -37,44 +56,83 @@ class TerrainGenerator {
       for (let x = 0; x < size; x++) {
         let height = this.calculateHeight(x, y, size);
 
-        // Apply terrain type modifier
+        // Terrain type modifier
         height = this.applyTerrainType(height, terrainType, x, y, size);
 
-        // Apply contrast
+        // Unity-friendly height distribution
+        height = this.applyUnityHeightDistribution(height);
+
+        // Apply contrast (hafif)
         height = Math.pow(Math.max(0, Math.min(1, height)), contrast);
 
-        // Convert to final height
+        // Final height calculation
         height = height * maxHeight;
 
         heightmap[y][x] = Math.max(0, height);
       }
     }
 
-    // Apply smoothing if requested
-    if (this.settings.smoothing > 0) {
-      return this.smoothTerrain(heightmap, this.settings.smoothing);
-    }
-
-    return heightmap;
+    // Always apply smoothing for Unity
+    return this.smoothTerrain(heightmap, this.settings.smoothing || 2);
   }
 
   calculateHeight(x, y, size) {
     const { scale, octaves, persistence, lacunarity } = this.settings;
 
     try {
+      // Base noise
       let height = this.noise.octaveNoise(
         x * scale,
         y * scale,
-        Math.min(octaves, 8), // Limit octaves to prevent stack overflow
-        Math.max(0.1, Math.min(1.0, persistence)), // Clamp values
-        Math.max(1.5, Math.min(4.0, lacunarity))
+        octaves,
+        persistence,
+        lacunarity
       );
+
+      // Edge falloff for more natural terrain
+      const edgeFalloff = this.calculateEdgeFalloff(x, y, size);
+      height *= edgeFalloff;
 
       // Normalize to 0-1
       return Math.max(0, Math.min(1, (height + 1) * 0.5));
     } catch (error) {
       console.error("Height calculation error:", error);
-      return 0.5; // Default height
+      return 0.3; // Safe default
+    }
+  }
+
+  calculateEdgeFalloff(x, y, size) {
+    const center = size * 0.5;
+    const maxDist = center * 0.9; // 90% of terrain has full height
+
+    const distFromCenter = Math.sqrt((x - center) ** 2 + (y - center) ** 2);
+
+    if (distFromCenter < maxDist) {
+      return 1.0;
+    } else {
+      const falloffDistance = center - maxDist;
+      const falloff =
+        1.0 - Math.min(1.0, (distFromCenter - maxDist) / falloffDistance);
+      return Math.max(0.1, falloff); // Minimum %10 height at edges
+    }
+  }
+
+  applyUnityHeightDistribution(height) {
+    // Unity için daha doğal yükseklik dağılımı
+    // Çoğu alan düşük, az alan yüksek olacak şekilde
+
+    if (height < 0.3) {
+      // Düşük alanlar (çayırlar, vadiler)
+      return height * 0.4;
+    } else if (height < 0.6) {
+      // Orta yükseklik (tepeler)
+      return 0.12 + (height - 0.3) * 0.6;
+    } else if (height < 0.8) {
+      // Yüksek alanlar (dağlar)
+      return 0.3 + (height - 0.6) * 0.8;
+    } else {
+      // En yüksek zirveler
+      return 0.46 + (height - 0.8) * 1.2;
     }
   }
 
@@ -88,60 +146,66 @@ class TerrainGenerator {
     try {
       switch (type) {
         case "plains":
-          return height * 0.3 + 0.1;
+          // Çok düz ve yumuşak
+          return height * 0.25 + 0.05;
 
         case "hills":
+          // Yumuşak tepeler
           const hillNoise = this.noise.octaveNoise(
-            x * 0.01,
-            y * 0.01,
-            3,
+            x * 0.008,
+            y * 0.008,
+            2,
+            0.4,
+            1.6
+          );
+          return height * 0.4 + Math.abs(hillNoise) * 0.15;
+
+        case "mountains":
+          // Daha belirgin ama yumuşak dağlar
+          const ridgeNoise = this.noise.ridgedNoise(x * 0.004, y * 0.004, 3);
+          return height * 0.6 + ridgeNoise * 0.25;
+
+        case "desert":
+          // Yumuşak kum tepeleri
+          const duneNoise1 = this.noise.octaveNoise(
+            x * 0.006,
+            y * 0.006,
+            2,
             0.5,
             1.8
           );
-          return height * 0.6 + Math.abs(hillNoise) * 0.2;
-
-        case "mountains":
-          const ridgeNoise = this.noise.ridgedNoise(x * 0.005, y * 0.005, 4);
-          return height * 0.7 + ridgeNoise * 0.3;
-
-        case "desert":
-          const duneNoise1 = this.noise.octaveNoise(
-            x * 0.008,
-            y * 0.008,
-            3,
-            0.6,
-            2.2
-          );
           const duneNoise2 = this.noise.octaveNoise(
-            x * 0.015,
-            y * 0.015,
+            x * 0.012,
+            y * 0.012,
             2,
-            0.4,
-            1.8
+            0.3,
+            1.6
           );
           return (
-            height * 0.4 + (Math.abs(duneNoise1) + Math.abs(duneNoise2)) * 0.1
+            height * 0.3 + (Math.abs(duneNoise1) + Math.abs(duneNoise2)) * 0.08
           );
 
         case "islands":
-          return height * edgeFactor * 0.8;
+          // Adalar - kenarlar suya doğru düşük
+          return height * edgeFactor * 0.5;
 
         case "valleys":
+          // Vadiler ve yüksek tepeler
           const valleyNoise = this.noise.octaveNoise(
-            x * 0.003,
-            y * 0.003,
+            x * 0.002,
+            y * 0.002,
             2,
-            0.7,
+            0.6,
             2.0
           );
-          return height * 0.5 + Math.sin(valleyNoise * Math.PI) * 0.2;
+          return height * 0.4 + Math.sin(valleyNoise * Math.PI) * 0.15;
 
         default:
-          return height;
+          return height * 0.6;
       }
     } catch (error) {
       console.error("Terrain type error:", error);
-      return height; // Return unmodified height on error
+      return height * 0.6;
     }
   }
 
@@ -149,8 +213,10 @@ class TerrainGenerator {
     const size = heightmap.length;
     let smoothed = heightmap.map((row) => [...row]);
 
-    for (let iter = 0; iter < Math.min(iterations, 3); iter++) {
-      // Limit iterations
+    // Unity için çok önemli - her zaman smooth uygula
+    const smoothIterations = Math.max(1, Math.min(3, iterations));
+
+    for (let iter = 0; iter < smoothIterations; iter++) {
       const newHeightmap = smoothed.map((row) => [...row]);
 
       for (let y = 1; y < size - 1; y++) {
@@ -158,10 +224,12 @@ class TerrainGenerator {
           let sum = 0;
           let count = 0;
 
+          // 3x3 kernel smoothing
           for (let dy = -1; dy <= 1; dy++) {
             for (let dx = -1; dx <= 1; dx++) {
-              sum += smoothed[y + dy][x + dx];
-              count++;
+              const weight = dx === 0 && dy === 0 ? 4 : 1; // Center pixel has more weight
+              sum += smoothed[y + dy][x + dx] * weight;
+              count += weight;
             }
           }
 
