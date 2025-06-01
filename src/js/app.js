@@ -4,6 +4,7 @@ class TerrainApp {
     this.waterSystem = new WaterSystem();
     this.renderer = null;
     this.exportManager = new ExportManager();
+    this.riverDrawer = null;
     this.currentHeightmap = null;
     this.generateTimeout = null;
 
@@ -24,11 +25,16 @@ class TerrainApp {
 
       // Initialize renderer
       const canvas = document.getElementById("terrain-preview");
+      const riverOverlay = document.getElementById("river-overlay");
+
       if (canvas) {
         this.renderer = new TerrainRenderer(canvas);
         console.log("Renderer initialized");
-      } else {
-        console.error("Canvas not found!");
+      }
+
+      if (riverOverlay) {
+        this.riverDrawer = new RiverDrawer(canvas, riverOverlay);
+        console.log("River drawer initialized");
       }
 
       // Setup event listeners
@@ -54,10 +60,8 @@ class TerrainApp {
     if (generateBtn) {
       generateBtn.addEventListener("click", (e) => {
         e.preventDefault();
-        console.log("Generate button clicked");
         this.generateTerrain();
       });
-      console.log("Generate button listener added");
     }
 
     // Export buttons
@@ -109,7 +113,44 @@ class TerrainApp {
       });
     }
 
-    // Range inputs with real-time update
+    // Water type change - show/hide river controls
+    const waterTypeSelect = document.getElementById("waterType");
+    if (waterTypeSelect) {
+      waterTypeSelect.addEventListener("change", (e) => {
+        this.handleWaterTypeChange(e.target.value);
+        this.generateTerrain();
+      });
+    }
+
+    // River drawing controls
+    const toggleRiverMode = document.getElementById("toggleRiverMode");
+    const clearRiver = document.getElementById("clearRiver");
+    const riverWidth = document.getElementById("riverWidth");
+
+    if (toggleRiverMode) {
+      toggleRiverMode.addEventListener("click", (e) => {
+        e.preventDefault();
+        this.toggleRiverDrawingMode();
+      });
+    }
+
+    if (clearRiver) {
+      clearRiver.addEventListener("click", (e) => {
+        e.preventDefault();
+        this.clearCustomRiver();
+      });
+    }
+
+    if (riverWidth) {
+      riverWidth.addEventListener("input", () => {
+        this.updateSliderValue("riverWidth");
+        if (this.riverDrawer) {
+          this.riverDrawer.setRiverWidth(parseInt(riverWidth.value));
+        }
+      });
+    }
+
+    // Range inputs
     const sliders = document.querySelectorAll('input[type="range"]');
     sliders.forEach((slider) => {
       slider.addEventListener("input", () => {
@@ -124,9 +165,12 @@ class TerrainApp {
     // Select inputs
     const selects = document.querySelectorAll("select");
     selects.forEach((select) => {
-      select.addEventListener("change", () => {
-        this.generateTerrain();
-      });
+      if (select.id !== "waterType") {
+        // Already handled above
+        select.addEventListener("change", () => {
+          this.generateTerrain();
+        });
+      }
     });
 
     // Seed input
@@ -135,6 +179,47 @@ class TerrainApp {
       seedInput.addEventListener("change", () => {
         this.generateTerrain();
       });
+    }
+  }
+
+  handleWaterTypeChange(waterType) {
+    const riverControls = document.getElementById("river-drawing-controls");
+    if (riverControls) {
+      riverControls.classList.toggle("hidden", waterType !== "custom-river");
+    }
+
+    // Disable river drawing mode if not custom river
+    if (waterType !== "custom-river" && this.riverDrawer) {
+      this.riverDrawer.setDrawingMode(false);
+      const toggleBtn = document.getElementById("toggleRiverMode");
+      if (toggleBtn) {
+        toggleBtn.classList.remove("active");
+        toggleBtn.textContent = "✏️ Draw Mode";
+      }
+    }
+  }
+
+  toggleRiverDrawingMode() {
+    if (!this.riverDrawer) return;
+
+    const toggleBtn = document.getElementById("toggleRiverMode");
+    const isActive = toggleBtn.classList.toggle("active");
+
+    this.riverDrawer.setDrawingMode(isActive);
+    toggleBtn.textContent = isActive ? "✋ Stop Drawing" : "✏️ Draw Mode";
+  }
+
+  clearCustomRiver() {
+    if (this.riverDrawer) {
+      this.riverDrawer.clearRiver();
+      this.generateTerrain();
+    }
+  }
+
+  updateCustomRiver(riverData) {
+    if (this.waterSystem) {
+      this.waterSystem.setCustomRiverData(riverData);
+      this.generateTerrain();
     }
   }
 
@@ -159,6 +244,9 @@ class TerrainApp {
       case "maxHeight":
       case "waterLevel":
         suffix = "m";
+        break;
+      case "riverWidth":
+        suffix = "px";
         break;
       case "terrainScale":
         decimals = 3;

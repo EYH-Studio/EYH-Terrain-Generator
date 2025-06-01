@@ -148,6 +148,7 @@
                   <option value="none">No Water</option>
                   <option value="lake">Lake</option>
                   <option value="river">River</option>
+                  <option value="custom-river">Custom River (Draw)</option>
                   <option value="ocean">Ocean</option>
                 </select>
               </div>
@@ -159,12 +160,39 @@
                 <input
                   type="range"
                   id="waterLevel"
-                  min="5"
+                  min="0"
                   max="100"
-                  value="5"
+                  value="30"
                   step="5"
                 />
-                <span id="waterLevelValue">5m</span>
+                <span id="waterLevelValue">30m</span>
+              </div>
+            </div>
+
+            <!-- Custom River Drawing Controls -->
+            <div id="river-drawing-controls" class="river-controls hidden">
+              <div class="control-group">
+                <label>River Width:</label>
+                <div class="control-input">
+                  <input
+                    type="range"
+                    id="riverWidth"
+                    min="5"
+                    max="50"
+                    value="15"
+                    step="5"
+                  />
+                  <span id="riverWidthValue">15px</span>
+                </div>
+              </div>
+              <div class="river-buttons">
+                <button id="clearRiver" class="btn-tool">🗑️ Clear River</button>
+                <button id="toggleRiverMode" class="btn-tool">
+                  ✏️ Draw Mode
+                </button>
+              </div>
+              <div class="river-info">
+                <small>Click and drag on preview to draw rivers</small>
               </div>
             </div>
           </div>
@@ -229,8 +257,11 @@
             </div>
           </div>
 
-          <div class="canvas-container">
-            <canvas id="terrain-preview" width="512" height="512"></canvas>
+          <div class="canvas-container" id="canvas-container">
+            <div class="canvas-wrapper">
+              <canvas id="terrain-preview" width="512" height="512"></canvas>
+              <canvas id="river-overlay" width="512" height="512"></canvas>
+            </div>
             <div class="canvas-overlay">
               <div id="loading" class="loading hidden">Generating...</div>
               <div id="terrain-info" class="info-panel">
@@ -266,6 +297,7 @@
     <script src="js/core/water-system.js"></script>
     <script src="js/core/terrain-renderer.js"></script>
     <script src="js/core/export-manager.js"></script>
+    <script src="js/core/river-drawer.js"></script>
     <script src="js/app.js"></script>
   </body>
 </html>
