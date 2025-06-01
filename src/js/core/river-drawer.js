@@ -78,7 +78,7 @@ class RiverDrawer {
     this.ctx.beginPath();
     this.ctx.moveTo(pos.x, pos.y);
 
-    console.log("Started drawing at:", pos);
+    console.log("Started drawing river at:", pos);
   }
 
   draw(e) {
@@ -87,11 +87,13 @@ class RiverDrawer {
     const pos = this.getCanvasPosition(e);
     this.riverPath.push(pos);
 
-    // Draw river segment
-    this.ctx.strokeStyle = "rgba(100, 150, 255, 0.8)";
+    // Draw river segment with better visuals
+    this.ctx.strokeStyle = "rgba(64, 164, 255, 0.9)"; // Brighter blue
     this.ctx.lineWidth = this.riverWidth;
     this.ctx.lineCap = "round";
     this.ctx.lineJoin = "round";
+    this.ctx.shadowColor = "rgba(64, 164, 255, 0.5)";
+    this.ctx.shadowBlur = 3;
 
     this.ctx.lineTo(pos.x, pos.y);
     this.ctx.stroke();
@@ -101,15 +103,21 @@ class RiverDrawer {
     if (!this.isDrawing) return;
     this.isDrawing = false;
 
-    console.log("River path completed with", this.riverPath.length, "points");
+    console.log(
+      "River drawing completed with",
+      this.riverPath.length,
+      "points"
+    );
 
     // Smooth the river path
     this.smoothRiverPath();
 
-    // Trigger terrain update
-    if (window.terrainApp && this.riverPath.length > 0) {
-      window.terrainApp.updateCustomRiver(this.getRiverData());
-    }
+    // Trigger terrain update after a short delay to ensure drawing is complete
+    setTimeout(() => {
+      if (window.terrainApp && this.riverPath.length > 0) {
+        window.terrainApp.updateCustomRiver(this.getRiverData());
+      }
+    }, 100);
   }
 
   smoothRiverPath() {
@@ -142,10 +150,12 @@ class RiverDrawer {
     if (this.riverPath.length < 2) return;
 
     this.ctx.beginPath();
-    this.ctx.strokeStyle = "rgba(100, 150, 255, 0.8)";
+    this.ctx.strokeStyle = "rgba(64, 164, 255, 0.9)";
     this.ctx.lineWidth = this.riverWidth;
     this.ctx.lineCap = "round";
     this.ctx.lineJoin = "round";
+    this.ctx.shadowColor = "rgba(64, 164, 255, 0.5)";
+    this.ctx.shadowBlur = 3;
 
     this.ctx.moveTo(this.riverPath[0].x, this.riverPath[0].y);
 
@@ -154,6 +164,10 @@ class RiverDrawer {
     }
 
     this.ctx.stroke();
+
+    // Reset shadow
+    this.ctx.shadowColor = "transparent";
+    this.ctx.shadowBlur = 0;
   }
 
   setDrawingMode(enabled) {
@@ -168,6 +182,11 @@ class RiverDrawer {
   setRiverWidth(width) {
     this.riverWidth = width;
     console.log("River width set to:", width);
+
+    // Redraw existing river with new width
+    if (this.riverPath.length > 0) {
+      this.redrawRiver();
+    }
   }
 
   clearRiver() {
@@ -196,7 +215,7 @@ class RiverDrawer {
         x: Math.floor(point.x * scale),
         y: Math.floor(point.y * scale),
       })),
-      width: Math.max(3, Math.floor((this.riverWidth * scale) / 10)),
+      width: Math.max(3, Math.floor((this.riverWidth * scale) / 8)), // Better scaling
     };
 
     console.log("River data generated:", riverData);

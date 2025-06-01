@@ -6,6 +6,7 @@ class WaterSystem {
 
   setCustomRiverData(riverData) {
     this.customRiverData = riverData;
+    console.log("Custom river data set:", riverData);
   }
 
   applyWater(heightmap, settings) {
@@ -82,23 +83,35 @@ class WaterSystem {
   }
 
   createCustomRiver(heightmap, size, waterLevel) {
-    if (!this.customRiverData || !this.customRiverData.path) {
+    if (
+      !this.customRiverData ||
+      !this.customRiverData.path ||
+      this.customRiverData.path.length === 0
+    ) {
       console.log("No custom river data available");
       return;
     }
 
     const { path, width } = this.customRiverData;
-    const riverWidth = Math.max(3, width || 10);
+    const riverWidth = Math.max(2, width || 8);
+
+    console.log(
+      `Creating custom river with ${path.length} points, width: ${riverWidth}, water level: ${waterLevel}`
+    );
+
+    // Calculate minimum depth for river (should be noticeable but not extreme)
+    const minRiverDepth = waterLevel * 0.3; // River bottom is 30% below water level
+    const maxRiverDepth = waterLevel * 0.7; // Maximum carving depth
 
     for (let i = 0; i < path.length - 1; i++) {
       const start = path[i];
       const end = path[i + 1];
 
-      // Interpolate points between start and end
+      // Interpolate points between start and end for smooth lines
       const distance = Math.sqrt(
         (end.x - start.x) ** 2 + (end.y - start.y) ** 2
       );
-      const steps = Math.ceil(distance);
+      const steps = Math.max(1, Math.ceil(distance * 2)); // Higher resolution
 
       for (let step = 0; step <= steps; step++) {
         const t = step / steps;
@@ -113,19 +126,43 @@ class WaterSystem {
 
             if (px >= 0 && px < size && py >= 0 && py < size) {
               const dist = Math.sqrt(dx * dx + dy * dy);
+
               if (dist <= riverWidth) {
-                const factor = Math.max(0, 1 - dist / riverWidth);
-                const riverDepth = waterLevel * factor * 0.7;
-                heightmap[py][px] = Math.min(
-                  heightmap[py][px],
-                  Math.max(0, waterLevel - riverDepth)
-                );
+                // Smooth falloff from center to edge
+                const falloff = Math.max(0, 1 - dist / riverWidth);
+                const smoothFalloff = this.smoothstep(falloff);
+
+                // Calculate target height for river bed
+                const currentHeight = heightmap[py][px];
+                const riverDepth =
+                  minRiverDepth +
+                  (maxRiverDepth - minRiverDepth) * smoothFalloff;
+                const targetHeight = Math.max(
+                  waterLevel - riverDepth,
+                  waterLevel * 0.1
+                ); // Don't go below 10% of water level
+
+                // Only lower terrain if it's above target height
+                if (currentHeight > targetHeight) {
+                  // Blend with existing terrain for smooth transition
+                  const blendFactor = smoothFalloff * 0.8; // Less aggressive blending
+                  heightmap[py][px] =
+                    currentHeight * (1 - blendFactor) +
+                    targetHeight * blendFactor;
+                }
               }
             }
           }
         }
       }
     }
+
+    console.log("Custom river created successfully");
+  }
+
+  // Smooth step function for better falloff
+  smoothstep(t) {
+    return t * t * (3 - 2 * t);
   }
 
   createOcean(heightmap, size, waterLevel) {

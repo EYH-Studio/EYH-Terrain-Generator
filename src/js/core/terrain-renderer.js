@@ -78,7 +78,7 @@ class TerrainRenderer {
       for (let y = 0; y < size; y++) {
         for (let x = 0; x < size; x++) {
           const height = heightmap[y][x];
-          if (height !== undefined && height !== null) {
+          if (height !== undefined && height !== null && isFinite(height)) {
             maxHeight = Math.max(maxHeight, height);
             minHeight = Math.min(minHeight, height);
           }
@@ -97,12 +97,18 @@ class TerrainRenderer {
           const heightmapX = Math.floor((canvasX / canvasSize) * size);
           const heightmapY = Math.floor((canvasY / canvasSize) * size);
 
-          // Get height value
-          const height =
+          // Get height value with bounds checking
+          let height = minHeight;
+          if (
             heightmap[heightmapY] &&
             heightmap[heightmapY][heightmapX] !== undefined
-              ? heightmap[heightmapY][heightmapX]
-              : minHeight;
+          ) {
+            height = heightmap[heightmapY][heightmapX];
+            // Ensure height is a valid number
+            if (!isFinite(height)) {
+              height = minHeight;
+            }
+          }
 
           // Normalize height to 0-1 range
           const normalizedHeight =
@@ -154,47 +160,56 @@ class TerrainRenderer {
   }
 
   getColorForHeight(normalizedHeight, actualHeight, settings) {
+    // Ensure we have valid inputs
+    if (!isFinite(actualHeight) || !isFinite(normalizedHeight)) {
+      return { r: 0, g: 0, b: 0 };
+    }
+
     // Check if water should be applied
     const hasWater = settings.waterType && settings.waterType !== "none";
     const waterLevel = settings.waterLevel || 0;
 
-    // FIXED: Only show water if water is enabled AND height is below water level
+    // Water rendering: only if water is enabled AND height is at/below water level
     if (hasWater && actualHeight <= waterLevel && waterLevel > 0) {
+      // Calculate water depth for color variation
+      const maxDepth = waterLevel * 0.8; // Maximum expected depth
       const depth = Math.max(
         0,
-        Math.min(1, (waterLevel - actualHeight) / Math.max(1, waterLevel * 0.5))
+        Math.min(1, (waterLevel - actualHeight) / maxDepth)
       );
+
+      // More vibrant water colors
       return {
-        r: Math.round(30 + depth * 40),
-        g: Math.round(100 + depth * 80),
-        b: Math.round(200 + depth * 55),
+        r: Math.round(20 + depth * 50), // Deep blue to lighter blue
+        g: Math.round(80 + depth * 100), // More green in deeper water
+        b: Math.round(180 + depth * 75), // Strong blue component
       };
     }
 
-    // FIXED: Terrain colors without blue tints
+    // Terrain colors - ensure no black/very dark colors
     const h = Math.max(0, Math.min(1, normalizedHeight));
 
     if (h < 0.1) {
-      // Very low - dark green
-      return { r: 34, g: 85, b: 34 };
+      // Very low - dark green (but not too dark)
+      return { r: 45, g: 95, b: 45 };
     } else if (h < 0.25) {
-      // Low - green
-      return { r: 51, g: 102, b: 51 };
+      // Low - medium green
+      return { r: 60, g: 120, b: 60 };
     } else if (h < 0.4) {
       // Medium low - forest green
-      return { r: 68, g: 119, b: 68 };
+      return { r: 75, g: 135, b: 75 };
     } else if (h < 0.55) {
-      // Medium - olive
-      return { r: 85, g: 119, b: 51 };
+      // Medium - olive green
+      return { r: 90, g: 130, b: 70 };
     } else if (h < 0.7) {
-      // High - yellow-brown
-      return { r: 136, g: 119, b: 68 };
+      // High - brownish
+      return { r: 130, g: 120, b: 80 };
     } else if (h < 0.85) {
       // Very high - brown
-      return { r: 119, g: 85, b: 68 };
+      return { r: 140, g: 100, b: 80 };
     } else {
       // Peak - light gray
-      return { r: 170, g: 170, b: 170 };
+      return { r: 180, g: 180, b: 180 };
     }
   }
 
