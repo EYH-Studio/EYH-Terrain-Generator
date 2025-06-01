@@ -305,7 +305,8 @@ class TerrainApp {
       heightmap = this.waterSystem.applyWater(heightmap, settings);
 
       this.currentHeightmap = heightmap;
-      this.exportManager.setHeightmap(heightmap);
+      // FIXED: Pass settings to export manager
+      this.exportManager.setHeightmap(heightmap, settings);
 
       // Render preview
       this.renderPreview();

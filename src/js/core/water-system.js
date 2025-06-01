@@ -93,15 +93,20 @@ class WaterSystem {
     }
 
     const { path, width } = this.customRiverData;
-    const riverWidth = Math.max(2, width || 8);
+
+    // FIXED: Better width scaling that matches visual appearance
+    const baseRiverWidth = Math.max(4, width || 8);
+    // Scale river width based on terrain size for consistent appearance
+    const scaleFactor = size / 513; // Base size is 513
+    const riverWidth = Math.round(baseRiverWidth * scaleFactor);
 
     console.log(
-      `Creating custom river with ${path.length} points, width: ${riverWidth}, water level: ${waterLevel}`
+      `Creating custom river: ${path.length} points, base width: ${baseRiverWidth}, scaled width: ${riverWidth}, terrain size: ${size}`
     );
 
-    // Calculate minimum depth for river (should be noticeable but not extreme)
-    const minRiverDepth = waterLevel * 0.3; // River bottom is 30% below water level
-    const maxRiverDepth = waterLevel * 0.7; // Maximum carving depth
+    // Calculate minimum depth for river
+    const minRiverDepth = waterLevel * 0.25; // River bottom is 25% below water level
+    const maxRiverDepth = waterLevel * 0.6; // Maximum carving depth
 
     for (let i = 0; i < path.length - 1; i++) {
       const start = path[i];
@@ -111,7 +116,7 @@ class WaterSystem {
       const distance = Math.sqrt(
         (end.x - start.x) ** 2 + (end.y - start.y) ** 2
       );
-      const steps = Math.max(1, Math.ceil(distance * 2)); // Higher resolution
+      const steps = Math.max(1, Math.ceil(distance * 1.5)); // Good resolution
 
       for (let step = 0; step <= steps; step++) {
         const t = step / steps;
@@ -140,12 +145,12 @@ class WaterSystem {
                 const targetHeight = Math.max(
                   waterLevel - riverDepth,
                   waterLevel * 0.1
-                ); // Don't go below 10% of water level
+                );
 
                 // Only lower terrain if it's above target height
                 if (currentHeight > targetHeight) {
-                  // Blend with existing terrain for smooth transition
-                  const blendFactor = smoothFalloff * 0.8; // Less aggressive blending
+                  // More aggressive blending for wider rivers
+                  const blendFactor = smoothFalloff * 0.85;
                   heightmap[py][px] =
                     currentHeight * (1 - blendFactor) +
                     targetHeight * blendFactor;

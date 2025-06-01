@@ -204,21 +204,33 @@ class RiverDrawer {
   getRiverData() {
     if (this.riverPath.length === 0) return null;
 
-    // Convert canvas coordinates to heightmap coordinates
+    // FIXED: Better width scaling for consistent appearance
     const terrainSize = parseInt(
       window.terrainApp?.getSettings().size || "513"
     );
-    const scale = terrainSize / 512;
+    const canvasSize = 512;
+    const scale = terrainSize / canvasSize;
+
+    // Calculate river width that will match visual appearance
+    // River width should be proportional to both canvas drawing size and terrain resolution
+    const baseWidth = this.riverWidth; // Drawing width on 512px canvas
+    const scaledWidth = Math.round(baseWidth * scale * 0.6); // 0.6 factor for better visual match
 
     const riverData = {
       path: this.riverPath.map((point) => ({
         x: Math.floor(point.x * scale),
         y: Math.floor(point.y * scale),
       })),
-      width: Math.max(3, Math.floor((this.riverWidth * scale) / 8)), // Better scaling
+      width: Math.max(3, scaledWidth), // Minimum width of 3 pixels
     };
 
-    console.log("River data generated:", riverData);
+    console.log(
+      `River data generated: ${
+        riverData.path.length
+      } points, canvas width: ${baseWidth}px, terrain width: ${scaledWidth}px, scale: ${scale.toFixed(
+        3
+      )}`
+    );
     return riverData;
   }
 
